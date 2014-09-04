@@ -1,0 +1,177 @@
+"""metab_network.py
+Takes metagenome_contributions.py output file from PICRUSt and uses it to create a metabolic
+network with compounds as nodes and reactions as edges.
+"""
+
+import argparse
+
+def get_reactions():
+    """get compounds for each reaction and each KO"""
+    f = open("reaction", 'U')
+    f = f.read()
+    f = f.strip().split('///')
+    pathway2ko = dict()
+    ko2rxn = dict()
+    rxn2co = dict()
+    for entry in f:
+        i = 0
+        entry = entry.strip().split('\n')
+        kos = []
+        paths = []
+        hasOrtho = False
+        
+        while i < len(entry):
+            rev = False
+            new_start = entry[i][:12].strip()
+            line = entry[i][12:].strip()
+
+            if new_start == "ENTRY":
+                r = line.strip().split()[0]
+                start = "ENTRY"
+            elif new_start == "EQUATION":
+                equ = line.split('=>')
+                if equ[0][-1] == '<':
+                    rev = True
+                    equ[0] = equ[0][:-1]
+                reacts = list()
+                for part in equ[0].strip().split():
+                    if part[0] == 'C' or part[0] == 'G':
+                        reacts.append(part[:6])
+                prods = list()
+                for part in equ[1].strip().split():
+                    if part[0] == 'C' or part[0] == 'G':
+                        prods.append(part[:6])
+                start = "EQUATION"
+            elif new_start == "PATHWAY":
+                paths.append(line.strip().split()[0][-5:])
+                start = "PATHWAY"
+            elif new_start == "ORTHOLOGY":
+                kos.append(line.strip().split()[0][-5:])
+                hasOrtho = True
+                start = "ORTHOLOGY"
+            elif new_start == "":
+                if start == "ORTHOLOGY":
+                    kos.append(line.strip().split()[0][-5:])
+                if start == "PATHWAY":
+                    paths.append(line.strip().split()[0][-5:])
+            else:
+                start = new_start
+            i+=1
+        if hasOrtho == True:
+            for ko in kos:
+                if ko in ko2rxn:
+                    ko2rxn[ko].add(r)
+                else:
+                    ko2rxn[ko] = set(r)
+            for path in paths:
+                if path in pathway2ko:
+                    pathway2ko[path] = pathway2ko[path] | set(kos)
+                else:
+                    pathway2ko[path] = set(kos)
+            rxn2co[r] = reacts,prods,rev
+
+    return pathway2ko,ko2rxn,rxn2co
+
+def parse_meta_contribs(contribs_loc):
+    """
+        input: contribs_loc = location of metagenome contributions file
+        outputs:    genomes = dict with OTU's as keys and sets of ko's as values
+    """
+    f = open(contribs_loc, 'U')
+    if f.closed == True:
+        print "file location does not exist"
+        return set()
+    f.readline() #toss header
+    kos = set()
+    for line in f:
+        line = line.strip().split('\t')
+        print line[0]
+        kos.add(line[0])
+    f.close()
+    return kos
+
+def filter_genes(genes_to_keep, genomes):
+    """takes a list of genes to keep and removes all others from the genome, takes in a set of
+    genes so the input gene data structure must be cast to a set.
+    """
+    new_genes = Counter()
+    for genome in genomes:
+        genes = genes_to_keep & genomes[genome]
+        if len(genes) > 0:
+            new_genomes[genome] = genes
+    return new_genomes
+
+def list_genes(gene_list):
+    """remove a list of genes from the file
+    """
+    f = open(gene_list)
+    genes = set()
+    for line in f:
+        genes.add(line.strip())
+    return genes
+    
+def sig_changed(sig_file, cutoff):
+    kos = set()
+    f = open(sig_file, 'U')
+    f.readline()
+
+    #for each line in file write KO, direction, weight
+    for line in f:
+        line = line.split('\t')
+        if float(line[1]) < sig_cutoff:
+            kos.add(line[0])
+    return kos
+    
+def make_network(kos, ko2rxn, rxn2co):
+    """Generate a network which has compounds as nodes and edges as KO's
+    """
+    edges = set()
+    for ko in kos:
+        if ko in ko2rxn:
+            for rxn in ko2rxn[ko]:
+                if rxn in rxn2co:
+                    for react in rxn2co[rxn][0]:
+                        for prod in rxn2co[rxn][1]:
+                            edges.add((react, prod))
+                            if rxn2co[rxn][2] == True:
+                                edges.add((prod, react))
+    new_edges = list()
+    for edge in edges:
+        print '\t'.join(edge)
+        new_edges.append('\t'.join(edge))
+        
+    new_edges = '\n'.join(new_edges)
+    f = open("edges.txt", 'w')
+    f.write(new_edges+'\n')
+    f.close()
+
+def main(input, output_prefix, list_genes, pathway, sig_cutoff):
+    #setup: parse reactions, parse out kos from meta_contribs file
+    pathway2ko, ko2rxn, rxn2co = get_reactions()    
+    kos = parse_meta_contribs(input_meta)
+    
+    print "Number of KOs before filtering: " + str(len(kos))
+    
+    #filter by pathway
+    if pathway != None:
+        kos = kos & pathway2[ko]
+        
+    #filter by list
+    if list_genes != None:
+        kos = kos & gene_list(list_genes)
+    
+    if sig_cutoff != None:
+        kos = kos & sig_changed(input_sig, sig_cutoff)
+        
+    print "Number of KO's: " + str(len(kos))
+    make_network(kos, ko2rxn, rxn2co)
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-m", "--input", help="location of metagenome contributions file or file containing significance values for genes/OTUs")
+    parser.add_argument("-o", "--output_prefix", help="prefix for output files")
+    parser.add_argument("-l", "--list_genes", help="file with newline separated list of genes to keep")
+    parser.add_argument("-p", "--pathway", help="KEGG pathway ID to create network from")
+    parser.add_argument("-c", "--sig_cutoff", type = float, help="significance cutoff to include a gene/OTU")
+    args = parser.parse_args()
+    main(args.input, args.output_prefix, args.list_genes, args.pathway, args.sig_cutoff)
