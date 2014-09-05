@@ -12,73 +12,6 @@ import numpy
 import bisect
 from operator import itemgetter
 
-def get_reactions():
-    """get compounds for each reaction and each KO"""
-    f = open("reaction", 'U')
-    f = f.read()
-    f = f.strip().split('///')
-    pathway2ko = dict()
-    ko2rxn = dict()
-    rxn2co = dict()
-    for entry in f:
-        i = 0
-        entry = entry.strip().split('\n')
-        kos = []
-        paths = []
-        hasOrtho = False
-        
-        while i < len(entry):
-            rev = False
-            new_start = entry[i][:12].strip()
-            line = entry[i][12:].strip()
-
-            if new_start == "ENTRY":
-                r = line.strip().split()[0]
-                start = "ENTRY"
-            elif new_start == "EQUATION":
-                equ = line.split('=>')
-                if equ[0][-1] == '<':
-                    rev = True
-                    equ[0] = equ[0][:-1]
-                reacts = list()
-                for part in equ[0].strip().split():
-                    if part[0] == 'C' or part[0] == 'G':
-                        reacts.append(part[:6])
-                prods = list()
-                for part in equ[1].strip().split():
-                    if part[0] == 'C' or part[0] == 'G':
-                        prods.append(part[:6])
-                start = "EQUATION"
-            elif new_start == "PATHWAY":
-                paths.append(line.strip().split()[0][-5:])
-                start = "PATHWAY"
-            elif new_start == "ORTHOLOGY":
-                kos.append(line.strip().split()[0][-5:])
-                hasOrtho = True
-                start = "ORTHOLOGY"
-            elif new_start == "":
-                if start == "ORTHOLOGY":
-                    kos.append(line.strip().split()[0][-5:])
-                if start == "PATHWAY":
-                    paths.append(line.strip().split()[0][-5:])
-            else:
-                start = new_start
-            i+=1
-        if hasOrtho == True:
-            for ko in kos:
-                if ko in ko2rxn:
-                    ko2rxn[ko].add(r)
-                else:
-                    ko2rxn[ko] = set(r)
-            for path in paths:
-                if path in pathway2ko:
-                    pathway2ko[path] = pathway2ko[path] | set(kos)
-                else:
-                    pathway2ko[path] = set(kos)
-            rxn2co[r] = reacts,prods,rev
-
-    return pathway2ko,ko2rxn,rxn2co
-    
 def parse_meta_contribs(contribs_loc):
     """
         input: contribs_loc = location of metagenome contributions file
@@ -153,7 +86,6 @@ def top_quantile(genomes, quantile):
     
     vals = [ko[1] for ko in kos]
     kos = kos[:bisect.bisect(vals, numpy.percentile(vals, quantile))]
-    del vals
     kos = set([ko[0] for ko in kos])
     return filter_genes(kos, genomes)
 
@@ -210,7 +142,6 @@ def make_network(genomes, prefix, ko2rxn, rxn2co):
     nodes.close()
 
 def main(input_file, output_prefix, quantile, list_genes, pathway, sig_cutoff, sig_file, filt_type):
-    pathways, ko2rxn, rxn2co = get_reactions()
     genomes = parse_meta_contribs(input_file)
     
     print "Number of OTUs before filtering: " + str(len(genomes.keys()))
@@ -225,7 +156,7 @@ def main(input_file, output_prefix, quantile, list_genes, pathway, sig_cutoff, s
     
     if pathway != None:
         print "filtering to only include designated pathway"
-        genomes = filter_genes(set(pathways[pathway[-5:]]), genomes)
+        genomes = filter_genes(set(parse_reaction.get_pathway2kos()[pathway[-5:]]), genomes)
     
     if list_genes != None:
         print "filtering to only include specified genes"
@@ -237,13 +168,14 @@ def main(input_file, output_prefix, quantile, list_genes, pathway, sig_cutoff, s
         
     if filt_type == "gene" and sig_cutoff != None and sig_file != None:
         print "filtering to only include significantly changed genes"
+        
     
     print "Number of OTUs: " + str(len(genomes.keys()))
     kos = set()
     for genome in genomes:
         kos = genomes[genome] | kos
     print "Number of KO's: " + str(len(kos))
-    make_network(genomes, output_prefix, ko2rxn, rxn2co)
+    make_network(genomes, output_prefix, parse_reaction.get_ko2rxns(), parse_reaction.get_reactions())
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
@@ -258,46 +190,3 @@ if __name__ == "__main__":
     parser.add_argument("-t", "--type", help="OTU or gene, to filter")
     args = parser.parse_args()
     main(args.input_file, args.output_prefix, args.quantile, args.list_genes, args.pathway, args.sig_cutoff, args.sig_file, args.type)
-    
-#deprecated
-def get_ko2rxns():
-    """read in pathway information from ko2rn.xl"""
-    f = open("ko2rn.xl", 'U')
-    ko2rxn = dict()
-    f.readline()
-    for line in f:
-        line = line.strip().split('\t')
-        ko = line[0]
-        rxns = line[1][4:-1].split()
-        ko2rxn[ko] = rxns
-    return ko2rxn
-    
-def get_rxn2cos():
-    """read in CO ID's associated with each reaction"""
-    rxn2co = dict()
-    with open("br08202.keg", 'U') as f:
-        for line in f:
-            if line[0] == "D":
-                line = line.strip().split('\t')
-                if len(line) > 2:
-                    rxn = line[0].split()[1]
-                    cos = line[1].split()[0], line[2].split()[0]
-                    rxn2co[rxn] = cos
-    return rxn2co
-
-def get_pathways():
-    """reads in pathway information containing all KO's associated with the pathway from 
-    ko00001.keg.  Location is currently assumed to be in the same folder as the script.
-    """
-    pathways = dict()
-    with open("ko00001.keg", 'U') as f:
-        for line in f:
-            if line[0] == "C":
-                pathway = line.split()[1]
-            if line[0] == "D":
-                gene = line.split()[1]
-                if pathway in pathways:
-                    pathways[pathway].append(gene)
-                else:
-                    pathways[pathway] = [gene]
-    return pathways
