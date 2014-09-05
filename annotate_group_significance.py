@@ -1,5 +1,9 @@
 """annotate_group_significance.py
 Adds information to group_significance.py or otu_category_significance.py script output.
+
+TODO:  Add ability to add compound information
+       Add ability to add OTU information
+       Look into other data to add as additional new columns for all data types
 """
 
 import parse_reaction

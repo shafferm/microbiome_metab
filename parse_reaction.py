@@ -6,6 +6,8 @@ can generate may be written to pickle's for fast use by other scripts.
 pathways are just a 5 digit number, orthology is a 5 digit number preceded by K, reaction is a
 5 digit number preceded by an R, compounds are a 5 digit number preceded by a C, and glycans
 are a 5 digit number preceded by a G
+
+TODO:  Add main method to make pickles for some/all methods 
 """
 
 from collections import defaultdict

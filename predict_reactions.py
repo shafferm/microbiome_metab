@@ -1,5 +1,7 @@
 """predict_reactions.py
 Takes in a gene biom table containing KO's and translates it into a table of KEGG reactions
+
+TODO: refactor to use get_reactions.py from parse_reaction.py
 """
 
 from biom import load_table
