@@ -1,4 +1,4 @@
-"""parse_reaction.py
+"""parse_KEGG.py
 Parses the reaction file from KEGG in order to produce a number of data structures.  This script is
 designed so that any of it's functions may be imported and so that any of the data structures it
 can generate may be written to pickle's for fast use by other scripts.
@@ -254,67 +254,81 @@ def get_ko_names():
             
     return ko_names
     
-# def get_reactions():
-#     """get compounds for each reaction and each KO
-#
-#     """
-#     f = open("reaction", 'U')
-#     f = f.read()
-#     f = f.strip().split('///')
-#     pathway2ko = defaultdict(set)
-#     ko2rxn = defaultdict(set)
-#     rxn2co = dict()
-#     for entry in f:
-#         i = 0
-#         entry = entry.strip().split('\n')
-#         kos = []
-#         paths = []
-#         hasOrtho = False
-#
-#         while i < len(entry):
-#             rev = False
-#             new_start = entry[i][:12].strip()
-#             line = entry[i][12:].strip()
-#
-#             if new_start == "ENTRY":
-#                 r = line.strip().split()[0]
-#                 start = "ENTRY"
-#             elif new_start == "EQUATION":
-#                 equ = line.split('=>')
-#                 if equ[0][-1] == '<':
-#                     rev = True
-#                     equ[0] = equ[0][:-1]
-#                 reacts = list()
-#                 for part in equ[0].strip().split():
-#                     if part[0] == 'C' or part[0] == 'G':
-#                         reacts.append(part[:6])
-#                 prods = list()
-#                 for part in equ[1].strip().split():
-#                     if part[0] == 'C' or part[0] == 'G':
-#                         prods.append(part[:6])
-#                 start = "EQUATION"
-#             elif new_start == "PATHWAY":
-#                 paths.append(line.strip().split()[0][-5:])
-#                 start = "PATHWAY"
-#             elif new_start == "ORTHOLOGY":
-#                 kos.append(line.strip().split()[0])
-#                 hasOrtho = True
-#                 start = "ORTHOLOGY"
-#             elif new_start == "":
-#                 if start == "ORTHOLOGY":
-#                     kos.append(line.strip().split()[0])
-#                 if start == "PATHWAY":
-#                     paths.append(line.strip().split()[0][-5:])
-#             else:
-#                 start = new_start
-#             i+=1
-#         if hasOrtho == True:
-#             if len(r) != 6 and r.startswith('R') == False:
-#                 print r
-#             for ko in kos:
-#                 ko2rxn[ko].add(r)
-#             for path in paths:
-#                 pathway2ko[path] = pathway2ko[path] | set(kos)
-#             rxn2co[r] = reacts,prods,rev
-#
-#     return pathway2ko,ko2rxn,rxn2co
+def get_co_names():
+    """"""
+    co_names = dict()
+    
+    f = open("compound", 'U')
+    f = f.read()
+    f = f.strip().split('///')
+    for entry in f:
+        i = 0
+        entry = entry.strip().split('\n')
+
+        while i < len(entry):
+            new_start = entry[i][:12].strip()
+            line = entry[i][12:].strip()
+
+            if new_start == "ENTRY":
+                co = line.strip().split()[0]
+                name = co
+                start = "ENTRY"
+            if new_start == "NAME":
+                name = line.strip().split(';')[0]
+                start = "NAME"
+            i+=1
+        
+        co_names[co] = name
+        
+    f = open("glycan", 'U')
+    f = f.read()
+    f = f.strip().split('///')
+    for entry in f:
+        i = 0
+        entry = entry.strip().split('\n')
+
+        while i < len(entry):
+            new_start = entry[i][:12].strip()
+            line = entry[i][12:].strip()
+
+            if new_start == "ENTRY":
+                co = line.strip().split()[0]
+                name = co
+                start = "ENTRY"
+            if new_start == "NAME":
+                name = line.strip().split(';')[0]
+                start = "NAME"
+            i+=1
+        
+        co_names[co] = name
+    
+    return co_names
+
+def get_co_counts():
+    """get compounds for each reaction and each KO
+    
+    """
+    f = open("reaction", 'U')
+    f = f.read()
+    f = f.strip().split('///')
+    co_counts = Counter()
+    for entry in f:
+        i = 0
+        entry = entry.strip().split('\n')
+        
+        while i < len(entry):
+            new_start = entry[i][:12].strip()
+            line = entry[i][12:].strip()
+            
+            if new_start == "EQUATION":
+                equ = line.split('=>')
+                if equ[0][-1] == '<':
+                    equ[0] = equ[0][:-1]
+                for part in equ[0].strip().split():
+                    if part[0] == 'C' or part[0] == 'G':
+                        co_counts[part[:6]]+=1
+                for part in equ[1].strip().split():
+                    if part[0] == 'C' or part[0] == 'G':
+                        co_counts[part[:6]]+=1
+            i+=1
+    return co_counts

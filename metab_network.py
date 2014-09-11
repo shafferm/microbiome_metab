@@ -4,7 +4,7 @@ with compounds as nodes and reactions as edges.
 """
 
 import argparse
-import parse_reaction
+import parse_KEGG
 
 def parse_group_sig(contribs_loc):
     """
@@ -25,14 +25,14 @@ def parse_group_sig(contribs_loc):
     f.close()
     return rxns, sig_dict
 
-def list_rxns(rxn_list):
+def get_list(list_):
     """get a list of genes from the file
     """
-    f = open(gene_list)
-    rxns = set()
+    f = open(list_)
+    items = set()
     for line in f:
-        rxns.add(line.strip())
-    return rxns
+        items.add(line.strip())
+    return items
     
 def sig_changed(sigs, cutoff):
     rxns = set()
@@ -44,23 +44,46 @@ def sig_changed(sigs, cutoff):
 def make_network(rxns, sigs, prefix):
     """Generate a network which has compounds as nodes and edges as KO's
     """
-    rxn2co = parse_reaction.get_reactions()
+    #get edges and compounds
+    rxn2co = parse_KEGG.get_reactions()
+    rxn_names = parse_KEGG.get_rxn_names()
+    rare_cos = get_list("rare_cos2.txt")
     edges = set()
+    cos = set()
     for rxn in rxns:
         if rxn in rxn2co:
             for react in rxn2co[rxn][0]:
-                for prod in rxn2co[rxn][1]:
-                    if rxn2co[rxn][2] == True:
-                        edges.add((react, prod, rxn, str(sigs[rxn]), "true"))
-                    else:
-                        edges.add((react, prod, rxn, str(sigs[rxn]), "false"))
+                if react in rare_cos:
+                    cos.add(react)
+                    for prod in rxn2co[rxn][1]:
+                        if prod in rare_cos:
+                            cos.add(prod)
+                            if rxn2co[rxn][2] == True:
+                                edges.add((react, prod, rxn, rxn_names[rxn], str(sigs[rxn]), "true"))
+                            else:
+                                edges.add((react, prod, rxn, rxn_names[rxn], str(sigs[rxn]), "false"))
     
+    #create and print edges file
     new_edges = list()
     for edge in edges:
         new_edges.append('\t'.join(edge))
         
     f = open(prefix+"_edges.txt", 'w')
-    f.write("reactant\tproduct\trxn_id\tFDR\treversible\n" + '\n'.join(new_edges) + '\n')
+    f.write("reactant\tproduct\trxn_id\treaction_name\tFDR\treversible\n" + '\n'.join(new_edges) + '\n')
+    f.close()
+    
+    #create and print nodes file
+    nodes = set()
+    co_names = parse_KEGG.get_co_names()
+    for co in cos:
+        nodes.add((co, co_names[co]))
+    
+    new_nodes = list()
+    for node in nodes:
+        new_nodes.append('\t'.join(node))
+        
+    f = open(prefix+"_nodes.txt", 'w')
+    f.write("compound\tcompound_name\n" + '\n'.join(new_nodes) + '\n')
     f.close()
 
 def main(input_file, output_prefix, rxn_list, pathway, sig_cutoff):
@@ -71,11 +94,11 @@ def main(input_file, output_prefix, rxn_list, pathway, sig_cutoff):
     
     #filter by pathway
     if pathway != None:
-        kos = kos & parse_reaction.get_pathway2rxns()[pathway]
+        kos = kos & parse_KEGG.get_pathway2rxns()[pathway]
         
     #filter by list
     if rxn_list != None:
-        rxns = rxns & list_genes(gene_list)
+        rxns = rxns & get_list(rxn_list)
     
     if sig_cutoff != None:
         rxns = rxns & sig_changed(sigs, sig_cutoff)
