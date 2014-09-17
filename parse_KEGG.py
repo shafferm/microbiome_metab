@@ -332,3 +332,49 @@ def get_co_counts():
                         co_counts[part[:6]]+=1
             i+=1
     return co_counts
+    
+def parse_reaction_mapformula_cos():
+    """Creates a CO set from compounds present in reaction_mapformula.lst file.
+    """
+    f = open("reaction_mapformula.lst", 'U')
+    cos = set()
+    for line in f:
+        line = line.strip().split()[2:]
+        for part in line:
+            if len(part) == 6 and part.startswith("C"):
+                cos.add(part)
+    return cos
+
+def parse_reaction_map_formula_reactions():
+    """adapted from parse_formula() from run_metabolic_networks_old.py
+    """
+    f = open("reaction_mapformula.lst", 'U')
+    rxns = dict()
+    for line in f:
+        #from parse_mapformula_file from parse_kegg.py
+        line = line.strip().split(':')
+        rxn = line[0].strip()
+        formula = line[2].strip()
+        
+        
+        formula = formula.split('=')
+        #get compounds on left and right side of the equation
+        left = formula[0][:-1]
+        left = left.split('+')
+        left = [i.strip() for i in left]
+        right = formula[1][1:]
+        right = right.split('+')
+        right = [i.strip() for i in right]
+        rev = False
+        
+        #Determine whether reaction goes in forward and/or reverse direction
+        # and create node objects
+        if formula[0].endswith('<'):
+            rev = True
+        
+        rxns[rxn] = left, right, rev
+        
+    return rxns
+        
+        
+    

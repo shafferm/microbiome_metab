@@ -21,7 +21,8 @@ def parse_group_sig(contribs_loc):
     for line in f:
         line = line.strip().split('\t')
         rxns.add(line[0])
-        sig_dict[line[0]] = float(line[3])
+        #sig_dict[line[0]] = float(line[3])
+        sig_dict[line[0]] = float(line[2])
     f.close()
     return rxns, sig_dict
 
@@ -47,7 +48,8 @@ def make_network(rxns, sigs, prefix):
     #get edges and compounds
     rxn2co = parse_KEGG.get_reactions()
     rxn_names = parse_KEGG.get_rxn_names()
-    rare_cos = get_list("rare_cos2.txt")
+    #rare_cos = get_list("rare_cos2.txt")
+    rare_cos = parse_KEGG.parse_reaction_mapformula()
     edges = set()
     cos = set()
     for rxn in rxns:
