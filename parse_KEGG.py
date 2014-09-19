@@ -345,7 +345,7 @@ def parse_reaction_mapformula_cos():
                 cos.add(part)
     return cos
 
-def parse_reaction_map_formula_reactions():
+def parse_reaction_mapformula():
     """adapted from parse_formula() from run_metabolic_networks_old.py
     """
     f = open("reaction_mapformula.lst", 'U')
