@@ -11,6 +11,7 @@ TODO:  Add main method to make pickles for some/all methods
 """
 
 from collections import defaultdict
+from collections import namedtuple
 
 def get_reactions():
     """get compounds for each reaction and each KO
@@ -254,9 +255,12 @@ def get_ko_names():
             
     return ko_names
     
-def get_co_names():
-    """"""
+def get_co_info():
+    """returns a named tuple with all avaliable compound data
+    nametuple fields: id, name, formula, mass
+    """
     co_names = dict()
+    Compound = namedtuple('Compound', 'co, name, formula, mass')
     
     f = open("compound", 'U')
     f = f.read()
@@ -264,6 +268,10 @@ def get_co_names():
     for entry in f:
         i = 0
         entry = entry.strip().split('\n')
+        co = None
+        name = None
+        formula = None
+        mass = None
 
         while i < len(entry):
             new_start = entry[i][:12].strip()
@@ -271,14 +279,15 @@ def get_co_names():
 
             if new_start == "ENTRY":
                 co = line.strip().split()[0]
-                name = co
-                start = "ENTRY"
             if new_start == "NAME":
                 name = line.strip().split(';')[0]
-                start = "NAME"
+            if new_start == "FORMULA":
+                formula = line.strip()
+            if new_start == "EXACT_MASS":
+                mass = line.strip()
             i+=1
         
-        co_names[co] = name
+        co_names[co] = Compound(co = co, name = name, formula = formula, mass = mass)
         
     f = open("glycan", 'U')
     f = f.read()
@@ -286,6 +295,10 @@ def get_co_names():
     for entry in f:
         i = 0
         entry = entry.strip().split('\n')
+        co = None
+        name = None
+        formula = None
+        mass = None
 
         while i < len(entry):
             new_start = entry[i][:12].strip()
@@ -293,14 +306,15 @@ def get_co_names():
 
             if new_start == "ENTRY":
                 co = line.strip().split()[0]
-                name = co
-                start = "ENTRY"
             if new_start == "NAME":
                 name = line.strip().split(';')[0]
-                start = "NAME"
+            if new_start == "COMPOSITION":
+                formula = line.strip()
+            if new_start == "MASS":
+                mass = line.strip().split()[0]
             i+=1
         
-        co_names[co] = name
+        co_names[co] = Compound(co = co, name = name, formula = formula, mass = mass)
     
     return co_names
 
