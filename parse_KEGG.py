@@ -333,7 +333,7 @@ def get_co_counts():
             i+=1
     return co_counts
     
-def parse_reaction_mapformula_cos():
+def get_reaction_mapformula_cos():
     """Creates a CO set from compounds present in reaction_mapformula.lst file.
     """
     f = open("reaction_mapformula.lst", 'U')
