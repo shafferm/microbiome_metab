@@ -91,10 +91,10 @@ def make_network(rxns, sigs, prefix):
     
     #create and print nodes file
     nodes = set()
-    co_names = parse_KEGG.get_co_names()
+    co_info = parse_KEGG.get_co_info()
     for co in cos:
         try:
-            nodes.add((co, co_names[co]))
+            nodes.add((co, co_info[co].name))
         except KeyError:
             nodes.add((co, co))
     
@@ -116,7 +116,7 @@ def main(input_file, output_prefix, rxn_list, pathway, sig_cutoff, otu_cat, raw_
     
     #filter by pathway
     if pathway != None:
-        kos = kos & parse_KEGG.get_pathway2rxns()[pathway]
+        rxns = rxns & parse_KEGG.get_pathway2rxns()[pathway]
         
     #filter by list
     if rxn_list != None:

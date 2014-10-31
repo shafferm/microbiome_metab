@@ -17,16 +17,15 @@ def get_organism2kos():
             print "IndexError"
             print line
             print len(org_dict)
-            break
+            continue
         except ValueError:
             print "ValueError"
             print line[0]
             print len(org_dict)
-            break
-        otu = line[0]
+            continue
         otu_kos = set()
         for i, count in enumerate(line[1:-1]):
             if count > 0:
-                otu_kos.add(kos[i])
-        org_dict[otu] = otu_kos
+                otu_kos.add(i)
+        org_dict[line[0]] = otu_kos
     return org_dict

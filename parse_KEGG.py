@@ -13,11 +13,65 @@ TODO:  Add main method to make pickles for some/all methods
 from collections import defaultdict
 from collections import namedtuple
 
+COMPOUND_LOC = "databases/compound"
+GLYCAN_LOC = "databases/glycan"
+REACTION_LOC = "databases/reaction"
+KO_LOC = "databases/ko"
+REACTION_MAPFORMULA_LOC = "databases/reaction_mapformula.lst"
+
+class KEGG_Parser:
+    """class to retrieve from dictionaries in KEGG"""
+    def __init__(self):
+        self.rxn2co = None
+        self.ko2rxns = None
+        self.pathway2kos = None
+        self.rxn2kos = None
+        self.rxn_names = None
+        self.ko_names = None
+        self.co_names = None
+        self.rxns = None
+    
+    def get_rxns_from_ko(self, ko):
+        if self.ko2rxns == None:
+            self.ko2rxns = get_ko2rxns()
+        try:
+            return self.ko2rxns[ko]
+        except KeyError:
+            print "KO id " + ko + " doesn't exist in this set."
+            return None
+    
+    def get_co_info(self, co):
+        if self.co_names == None:
+            self.co_names = get_co_info()
+        try:
+            return self.co_names[co]
+        except KeyError:
+            print "CO id " + co + " doesn't exist in this set"
+            return None
+    
+    def get_kos_from_pathway(self, pathway):
+        if self.pathway2kos == None:
+            self.pathway2kos = get_pathway2kos()
+        try:
+            return self.pathway2kos[pathway[-5:]]
+        except KeyError:
+            print "pathway number " + pathway[-5:] + " doesn't exist in this set"
+            return None
+            
+    def get_kos_from_rxn(self, rxn):
+        if self.rxn2kos == None:
+            self.rxn2kos = get_rxn2kos()
+        try:
+            return self.rxn2kos[rxn]
+        except KeyError:
+            print "reaction id " + rxn + " doesn't exist in this set"
+            return None
+
 def get_reactions():
     """get compounds for each reaction and each KO
     
     """
-    f = open("reaction", 'U')
+    f = open(REACTION_LOC, 'U')
     f = f.read()
     f = f.strip().split('///')
     rxn2co = dict()
@@ -65,15 +119,52 @@ def get_reactions():
 
     return rxn2co
 
+# def get_ko2rxns():
+#     f = open(REACTION_LOC, 'U')
+#     f = f.read()
+#     f = f.strip().split('///')
+#     ko2rxns = defaultdict(set)
+#     for entry in f:
+#         i = 0
+#         entry = entry.strip().split('\n')
+#         kos = []
+#         hasOrtho = False
+#
+#         while i < len(entry):
+#             new_start = entry[i][:12].strip()
+#             line = entry[i][12:].strip()
+#
+#             if new_start == "ENTRY":
+#                 r = line.strip().split()[0]
+#                 start = "ENTRY"
+#             elif new_start == "ORTHOLOGY":
+#                 kos.append(line.strip().split()[0])
+#                 hasOrtho = True
+#                 start = "ORTHOLOGY"
+#             elif new_start == "":
+#                 if start == "ORTHOLOGY":
+#                     kos.append(line.strip().split()[0])
+#             else:
+#                 start = new_start
+#             i+=1
+#         if hasOrtho == True:
+#             if len(r) != 6 and r.startswith('R') == False:
+#                 print r
+#             for ko in kos:
+#                 ko2rxns[ko].add(r)
+#
+#     return ko2rxns
+
 def get_ko2rxns():
-    f = open("reaction", 'U')
+    f = open(KO_LOC, 'U')
     f = f.read()
     f = f.strip().split('///')
-    ko2rxns = defaultdict(set)
+    ko2rxns = {}
     for entry in f:
         i = 0
         entry = entry.strip().split('\n')
-        kos = []
+        ko = None
+        rxns = None
         hasOrtho = False
         
         while i < len(entry):
@@ -81,28 +172,69 @@ def get_ko2rxns():
             line = entry[i][12:].strip()
 
             if new_start == "ENTRY":
-                r = line.strip().split()[0]
+                ko = line.strip().split()[0]
                 start = "ENTRY"
-            elif new_start == "ORTHOLOGY":
-                kos.append(line.strip().split()[0])
-                hasOrtho = True
-                start = "ORTHOLOGY"
+            elif new_start == "DBLINKS":
+                line = line.split()
+                if line[0] == "RN:":
+                    rxns = line[1:]
             elif new_start == "":
-                if start == "ORTHOLOGY":
-                    kos.append(line.strip().split()[0])
+                if start == "DBLINKS":
+                    if line[0] == "RN:":
+                        rxns = line[1:]
             else:
                 start = new_start
             i+=1
-        if hasOrtho == True:
-            if len(r) != 6 and r.startswith('R') == False:
-                print r
-            for ko in kos:
-                ko2rxns[ko].add(r)
+        if rxns != None:
+            ko2rxns[ko] = set(rxns)
 
     return ko2rxns
 
+# def get_pathway2kos():
+#     f = open(REACTION_LOC, 'U')
+#     f = f.read()
+#     f = f.strip().split('///')
+#     pathway2kos = defaultdict(set)
+#
+#     for entry in f:
+#         i = 0
+#         entry = entry.strip().split('\n')
+#         kos = []
+#         paths = []
+#         hasOrtho = False
+#
+#         while i < len(entry):
+#             new_start = entry[i][:12].strip()
+#             line = entry[i][12:].strip()
+#
+#             if new_start == "ENTRY":
+#                 r = line.strip().split()[0]
+#                 start = "ENTRY"
+#             elif new_start == "PATHWAY":
+#                 paths.append(line.strip().split()[0][-5:])
+#                 start = "PATHWAY"
+#             elif new_start == "ORTHOLOGY":
+#                 kos.append(line.strip().split()[0])
+#                 hasOrtho = True
+#                 start = "ORTHOLOGY"
+#             elif new_start == "":
+#                 if start == "ORTHOLOGY":
+#                     kos.append(line.strip().split()[0])
+#                 if start == "PATHWAY":
+#                     paths.append(line.strip().split()[0][-5:])
+#             else:
+#                 start = new_start
+#             i+=1
+#         if hasOrtho == True:
+#             if len(r) != 6 and r.startswith('R') == False:
+#                 print r
+#             for path in paths:
+#                 pathway2kos[path] = pathway2kos[path] | set(kos)
+#
+#     return pathway2kos
+
 def get_pathway2kos():
-    f = open("reaction", 'U')
+    f = open(KO_LOC, 'U')
     f = f.read()
     f = f.strip().split('///')
     pathway2kos = defaultdict(set)
@@ -110,10 +242,42 @@ def get_pathway2kos():
     for entry in f:
         i = 0
         entry = entry.strip().split('\n')
-        kos = []
         paths = []
         hasOrtho = False
         
+        while i < len(entry):
+            new_start = entry[i][:12].strip()
+            line = entry[i][12:].strip()
+
+            if new_start == "ENTRY":
+                ko = line.strip().split()[0]
+                start = "ENTRY"
+            elif new_start == "PATHWAY":
+                paths.append(line.strip().split()[0][-5:])
+                start = "PATHWAY"
+            elif new_start == "":
+                if start == "PATHWAY":
+                    paths.append(line.strip().split()[0][-5:])
+            else:
+                start = new_start
+            i+=1
+        for path in paths:
+            pathway2kos[path].add(ko)
+
+    return pathway2kos
+
+def get_pathway2rxns():
+    f = open(REACTION_LOC, 'U')
+    f = f.read()
+    f = f.strip().split('///')
+    pathway2rxns = defaultdict(set)
+
+    for entry in f:
+        i = 0
+        entry = entry.strip().split('\n')
+        paths = []
+        hasOrtho = False
+
         while i < len(entry):
             new_start = entry[i][:12].strip()
             line = entry[i][12:].strip()
@@ -124,29 +288,20 @@ def get_pathway2kos():
             elif new_start == "PATHWAY":
                 paths.append(line.strip().split()[0][-5:])
                 start = "PATHWAY"
-            elif new_start == "ORTHOLOGY":
-                kos.append(line.strip().split()[0])
-                hasOrtho = True
-                start = "ORTHOLOGY"
             elif new_start == "":
-                if start == "ORTHOLOGY":
-                    kos.append(line.strip().split()[0])
                 if start == "PATHWAY":
                     paths.append(line.strip().split()[0][-5:])
             else:
                 start = new_start
             i+=1
-        if hasOrtho == True:
-            if len(r) != 6 and r.startswith('R') == False:
-                print r
-            for path in paths:
-                pathway2kos[path] = pathway2kos[path] | set(kos)
+        for path in paths:
+            pathway2rxns[path].add(r)
 
-    return pathway2kos
+    return pathway2rxns
     
 def get_rxn2kos():
     """"""
-    f = open("reaction", 'U')
+    f = open(REACTION_LOC, 'U')
     f = f.read()
     f = f.strip().split('///')
     rxn2kos = defaultdict(set)
@@ -185,7 +340,7 @@ def get_rxn2kos():
     
 def get_rxn_names():
     """"""
-    f = open("reaction", 'U')
+    f = open(REACTION_LOC, 'U')
     f = f.read()
     f = f.strip().split('///')
     rxn_names = dict()
@@ -222,36 +377,27 @@ def get_rxn_names():
 
 def get_ko_names():
     """"""
-    f = open("reaction", 'U')
+    f = open(KO_LOC, 'U')
     f = f.read()
     f = f.strip().split('///')
     ko_names = dict()
     for entry in f:
         i = 0
         entry = entry.strip().split('\n')
-        kos = []
-        paths = []
         hasOrtho = False
 
         while i < len(entry):
             rev = False
             new_start = entry[i][:12].strip()
             line = entry[i][12:].strip()
-
-            if new_start == "ORTHOLOGY":
-                kos.append(line.strip().split()[0])
-                hasOrtho = True
-                start = "ORTHOLOGY"
-            elif new_start == "":
-                if start == "ORTHOLOGY":
-                    ko = line.strip().split()[0],' '.join(line.strip().split()[1:])
-                    kos.append(ko)
-            else:
-                start = new_start
+            
+            if new_start == "ENTRY":
+                ko = line.strip().split()[0]
+            if new_start == "DEFINITION":
+                name = " ".join(line.split()[:-1])
             i+=1
-        if hasOrtho == True:
-            for ko in kos:
-                ko_names[ko[0]] = ko[1]
+            
+        ko_names[ko] = name
             
     return ko_names
     
@@ -260,9 +406,9 @@ def get_co_info():
     nametuple fields: id, name, formula, mass
     """
     co_names = dict()
-    Compound = namedtuple('Compound', 'co, name, formula, mass')
+    Compound = namedtuple('Compound', 'co, name, formula, mass, rxn')
     
-    f = open("compound", 'U')
+    f = open(COMPOUND_LOC, 'U')
     f = f.read()
     f = f.strip().split('///')
     for entry in f:
@@ -285,11 +431,13 @@ def get_co_info():
                 formula = line.strip()
             if new_start == "EXACT_MASS":
                 mass = line.strip()
+            if new_start == "REACTION":
+                rxns = line.strip().split()
             i+=1
         
-        co_names[co] = Compound(co = co, name = name, formula = formula, mass = mass)
+        co_names[co] = Compound(co = co, name = name, formula = formula, mass = mass, rxn = rxns)
         
-    f = open("glycan", 'U')
+    f = open(GLYCAN_LOC, 'U')
     f = f.read()
     f = f.strip().split('///')
     for entry in f:
@@ -312,9 +460,11 @@ def get_co_info():
                 formula = line.strip()
             if new_start == "MASS":
                 mass = line.strip().split()[0]
+            if new_start == "REACTION":
+                rxns = line.strip().split()
             i+=1
         
-        co_names[co] = Compound(co = co, name = name, formula = formula, mass = mass)
+        co_names[co] = Compound(co = co, name = name, formula = formula, mass = mass, rxn = rxns)
     
     return co_names
 
@@ -322,7 +472,7 @@ def get_co_counts():
     """get compounds for each reaction and each KO
     
     """
-    f = open("reaction", 'U')
+    f = open(REACTION_LOC, 'U')
     f = f.read()
     f = f.strip().split('///')
     co_counts = Counter()
@@ -350,7 +500,7 @@ def get_co_counts():
 def get_reaction_mapformula_cos():
     """Creates a CO set from compounds present in reaction_mapformula.lst file.
     """
-    f = open("reaction_mapformula.lst", 'U')
+    f = open(REACTION_MAPFORMULA_LOC, 'U')
     cos = set()
     for line in f:
         line = line.strip().split()[2:]
@@ -362,7 +512,7 @@ def get_reaction_mapformula_cos():
 def parse_reaction_mapformula():
     """adapted from parse_formula() from run_metabolic_networks_old.py
     """
-    f = open("reaction_mapformula.lst", 'U')
+    f = open(REACTION_MAPFORMULA_LOC, 'U')
     rxns = dict()
     for line in f:
         #from parse_mapformula_file from parse_kegg.py
@@ -389,6 +539,3 @@ def parse_reaction_mapformula():
         rxns[rxn] = left, right, rev
         
     return rxns
-        
-        
-    
