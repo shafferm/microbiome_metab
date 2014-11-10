@@ -58,8 +58,8 @@ def make_network(rxns, sigs, prefix):
     """Generate a network which has compounds as nodes and edges as KO's
     """
     #get edges and compounds
-    #rxn2co = parse_KEGG.get_reactions()
-    rxn2co = parse_KEGG.parse_reaction_mapformula()
+    rxn2co = parse_KEGG.get_reactions()
+    #rxn2co = parse_KEGG.parse_reaction_mapformula()
     rxn_names = parse_KEGG.get_rxn_names()
     #rare_cos = get_list("rare_cos2.txt")
     #rare_cos = parse_KEGG.parse_reaction_mapformula()

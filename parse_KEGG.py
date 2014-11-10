@@ -22,9 +22,10 @@ REACTION_MAPFORMULA_LOC = "databases/reaction_mapformula.lst"
 class KEGG_Parser:
     """class to retrieve from dictionaries in KEGG"""
     def __init__(self):
-        self.rxn2co = None
+        self.rxn2cos = None
         self.ko2rxns = None
         self.pathway2kos = None
+        self.pathway2rxns = None
         self.rxn2kos = None
         self.rxn_names = None
         self.ko_names = None
@@ -38,7 +39,7 @@ class KEGG_Parser:
             return self.ko2rxns[ko]
         except KeyError:
             print "KO id " + ko + " doesn't exist in this set."
-            return None
+            return set()
     
     def get_co_info(self, co):
         if self.co_names == None:
@@ -56,13 +57,40 @@ class KEGG_Parser:
             return self.pathway2kos[pathway[-5:]]
         except KeyError:
             print "pathway number " + pathway[-5:] + " doesn't exist in this set"
-            return None
+            return set()
+            
+    def get_rxns_from_pathway(self, pathway):
+        if self.pathway2rxns == None:
+            self.pathway2rxns = get_pathway2rxns()
+        try:
+            return self.pathway2rxns[pathway[-5:]]
+        except KeyError:
+            print "pathway number " + pathway[-5:] + " doesn't exist in this set"
+            return set()
             
     def get_kos_from_rxn(self, rxn):
         if self.rxn2kos == None:
             self.rxn2kos = get_rxn2kos()
         try:
             return self.rxn2kos[rxn]
+        except KeyError:
+            print "reaction id " + rxn + " doesn't exist in this set"
+            return set()
+    
+    def get_rxn(self, rxn):
+        if self.rxn2cos == None:
+            self.rxn2cos = get_reactions()
+        try:
+            return self.rxn2cos[rxn]
+        except KeyError:
+            print "reaction id " + rxn + " doesn't exist in this set"
+            return None
+    
+    def get_rxn_name(self, rxn):
+        if self.rxn_names == None:
+            self.rxn_names = get_rxn_names()
+        try:
+            return self.rxn_names[rxn]
         except KeyError:
             print "reaction id " + rxn + " doesn't exist in this set"
             return None
@@ -114,8 +142,7 @@ def get_reactions():
             else:
                 start = new_start
             i+=1
-        if hasOrtho == True:
-            rxn2co[r] = reacts,prods,rev
+        rxn2co[r] = reacts,prods,rev
 
     return rxn2co
 
@@ -187,6 +214,8 @@ def get_ko2rxns():
             i+=1
         if rxns != None:
             ko2rxns[ko] = set(rxns)
+        else:
+            ko2rxns[ko] = set()
 
     return ko2rxns
 
@@ -368,10 +397,9 @@ def get_rxn_names():
                 start = new_start
             i+=1
             
-        if hasOrtho == True:
-            if len(r) != 6 and r.startswith('R') == False:
-                print r
-            rxn_names[r] = name
+        if len(r) != 6 and r.startswith('R') == False:
+            print r
+        rxn_names[r] = name
 
     return rxn_names
 
