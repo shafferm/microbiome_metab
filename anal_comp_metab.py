@@ -24,11 +24,12 @@ def get_first_rxn(genome, compound):
 
 def can_react_with(genomes, compound):
     can_otus = list()
+    can_kos = dict()
     for genome in genomes:
         if len(get_first_rxn(genomes[genome], compound))>0:
-            print str(len(get_first_rxn(genomes[genome], compound))) + '\t' + genome
+            can_kos[genome] = len(get_first_rxn(genomes[genome], compound))
             can_otus.append(genome)
-    return filter_by_list(genomes, can_otus)
+    return filter_by_list(genomes, can_otus), can_kos
     
 def has_pathway_percent(genomes, pathway, cutoff):
     pathway = kegg_parser.get_kos_from_pathway(pathway)
