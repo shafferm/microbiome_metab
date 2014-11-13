@@ -4,6 +4,8 @@ from parse_KEGG import KEGG_Parser
 from make_gg_genomes import get_genome
 from biom import load_table
 
+import argparse
+
 kegg_parser = KEGG_Parser()
 
 def get_genomes(otu_list):
@@ -29,7 +31,7 @@ def can_react_with(genomes, compound):
         if len(get_first_rxn(genomes[genome], compound))>0:
             can_kos[genome] = len(get_first_rxn(genomes[genome], compound))
             can_otus.append(genome)
-    return filter_by_list(genomes, can_otus), can_kos
+    return filter_by_list(genomes, can_otus)
     
 def has_pathway_percent(genomes, pathway, cutoff):
     pathway = kegg_parser.get_kos_from_pathway(pathway)
@@ -38,7 +40,6 @@ def has_pathway_percent(genomes, pathway, cutoff):
         percent = float(len(set(genomes[genome])&pathway))/float(len(pathway))
         if percent > cutoff:
             otus_to_keep.append(genome)
-            print str(percent) + '\t' + genome
     return filter_by_list(genomes, otus_to_keep)
 
 def filter_by_list(genomes, otus_to_keep):
@@ -77,14 +78,15 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument("-i", "--input", required=True,
                         help="location of input biom table")
-    parser.add_argument("-o", "")
-    parser.add_argument("-c", "--coumpound", required=True,
+    parser.add_argument("-o", "--output", required=True)
+    parser.add_argument("-c", "--compound", required=True,
                         help="KEGG compound id")
     parser.add_argument("-p", "--pathway", required=True,
                         help="KEGG pathway number")
-    parser.add_argument("--cutoff", default=.6,
+    parser.add_argument("--cutoff", type=float, default=.1,
                         help="percent pathway presensce required to keep")
     parser.add_argument("--filter_kos",
                         help="file containing list of KO's to filter separated by whitespace")
+    args = parser.parse_args()
     
-    main(args.input, args.output, args.compound, args.pathway, args.cutoff, args.filter_frequent)
+    main(args.input, args.output, args.compound, args.pathway, args.cutoff, args.filter_kos)

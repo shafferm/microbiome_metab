@@ -6,7 +6,7 @@ with compounds as nodes and reactions as edges.
 import argparse
 import parse_KEGG
 
-def parse_group_sig(contribs_loc, otu_cat, raw_p):
+def parse_group_sig(contribs_loc, otu_cat, raw_p=False):
     """
         input: sig_loc = location of group significance file
         outputs:    rxns = 
