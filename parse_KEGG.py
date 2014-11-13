@@ -384,19 +384,29 @@ def get_ko_names():
     for entry in f:
         i = 0
         entry = entry.strip().split('\n')
-        hasOrtho = False
+        ko = None
+        name = None
+        defin = None
 
         while i < len(entry):
-            rev = False
             new_start = entry[i][:12].strip()
             line = entry[i][12:].strip()
             
             if new_start == "ENTRY":
                 ko = line.strip().split()[0]
+            if new_start == "NAME":
+                name = line.strip()
             if new_start == "DEFINITION":
-                name = " ".join(line.split()[:-1])
+                defin = " ".join(line.split()[:-1])
             i+=1
-            
+        
+        if name == None:
+            name = defin
+        elif defin != None and name != None:
+            name = defin + " (" + name + ")"
+        elif defin == None and name == None:
+            name = ko
+                
         ko_names[ko] = name
             
     return ko_names

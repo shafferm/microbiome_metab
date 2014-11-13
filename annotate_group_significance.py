@@ -6,7 +6,7 @@ TODO:  Add ability to add compound information
        Look into other data to add as additional new columns for all data types
 """
 
-import parse_reaction
+import parse_KEGG
 import sys
 import argparse
 
@@ -35,7 +35,7 @@ def parse_gg(gg_loc="97_otu_taxonomy.txt"):
     
 def annotate_rxns(header, entries):
     """"""
-    rxn_names = parse_reaction.get_rxn_names()
+    rxn_names = parse_KEGG.get_rxn_names()
     header.append("reaction_name")
     new_entries = list()
     for entry in entries:
@@ -53,7 +53,7 @@ def annotate_rxns(header, entries):
     
 def annotate_KOs(header, entries):
     """"""
-    ko_names = parse_reaction.get_ko_names()
+    ko_names = parse_KEGG.get_ko_names()
     header.append("ko_name")
     new_entries = list()
     for entry in entries:
