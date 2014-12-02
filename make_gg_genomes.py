@@ -5,6 +5,19 @@ import os
 
 GENOMES_LOC = "gg_genomes/"
 OTU_KO_TABLE_LOC = "databases/ko_13_5_precalculated.tab"
+GG_LOC = "databases/97_otu_taxonomy.txt"
+
+def parse_gg(gg_loc=GG_LOC):
+    """"""
+    f = open(gg_loc)
+    f.readline()
+    if f.closed:
+        print "gg_loc not valid"
+    taxa = dict()
+    for line in f:
+        line = line.strip().split('\t')
+        taxa[line[0]] = line[1]
+    return taxa
 
 def get_genome(otu):
     try:

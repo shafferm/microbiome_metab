@@ -11,6 +11,9 @@ from collections import Counter
 import numpy
 import bisect
 from operator import itemgetter
+from network import *
+from parse_KEGG import KEGG_Parser
+from make_gg_genomes import parse_gg
 
 def parse_meta_contribs(contribs_loc):
     """
@@ -107,39 +110,17 @@ def filter_sig_OTUs(genomes, sig_file, sig_cutoff):
             otus.add(line[0])
     return filter_otus(otus, genomes)
     
-def make_network(genomes, prefix, ko2rxn, rxn2co):
-    """
-        input: genomes = dict with genomes as keys and sets of KO's as values 
-               prefix = prefix for output files
-        output: None
-    """
-    edges = open(prefix+"_edges.txt", 'w')
-    edges.write("node1\ttype\tnode2\n")
-    nodes = open(prefix+"_nodes.txt", 'w')
-    nodes.write("id\ttype\n")
-    nodes_added = set()
-    rxns_added = set()
-    for genome in genomes:
-        nodes.write(genome + '\tOTU\n')
-        for gene in genomes[genome]:
-            edges.write(genome + '\thas\t' + gene + '\n')
-            if gene not in nodes_added:
-                nodes.write(gene + '\tKO\n')
-                nodes_added.add(gene)
-                for rxn in ko2rxn[gene]:
-                    if rxn in rxn2co and rxn not in rxns_added:
-                        for co in rxn2co[rxn][0]:
-                            edges.write(co + '\t>\t' + gene + '\n') #reactant to gene
-                        for co in rxn2co[rxn][1]:
-                            edges.write(gene + '\t>\t' + co + '\n') #gene to reactant
-                        if rxn2co[rxn][2]:
-                            for co in rxn2co[rxn][0]:
-                                edges.write(gene + '\t>\t' + co + '\n') #reverse reactant to gene
-                            for co in rxn2co[rxn][1]:
-                                edges.write(co + '\t>\t' + gene + '\n') #reverse gene to product
-                        rxns_added.add(rxn)
-    edges.close()
-    nodes.close()
+def make_network(genomes, prefix):
+    gg = parse_gg()
+    edge_info = dict()
+    nodes = dict()
+    for genome, genes in genomes.iteritems():
+        nodes[genome] = Node(list(genes), {'eng_name':gg[genome], 'type':'genome'})
+        for gene in genes:
+            edge_info[(genome, gene)] = {'type':'has'}
+            if gene not in nodes:
+                nodes[gene] = Node(info={'type':'gene', 'eng_name':kegg_parser.get_ko_name})
+    return Network(nodes, edge_info)
 
 def main(input_file, output_prefix, quantile, list_genes, pathway, sig_cutoff, sig_file, filt_type):
     genomes = parse_meta_contribs(input_file)
@@ -156,7 +137,7 @@ def main(input_file, output_prefix, quantile, list_genes, pathway, sig_cutoff, s
     
     if pathway != None:
         print "filtering to only include designated pathway"
-        genomes = filter_genes(set(parse_reaction.get_pathway2kos()[pathway[-5:]]), genomes)
+        genomes = filter_genes(set(kegg_parser.get_kos_from_pathway(pathway[-5:])), genomes)
     
     if list_genes != None:
         print "filtering to only include specified genes"
@@ -175,7 +156,7 @@ def main(input_file, output_prefix, quantile, list_genes, pathway, sig_cutoff, s
     for genome in genomes:
         kos = genomes[genome] | kos
     print "Number of KO's: " + str(len(kos))
-    make_network(genomes, output_prefix, parse_reaction.get_ko2rxns(), parse_reaction.get_reactions())
+    make_network(genomes, output_prefix).print_network()
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
@@ -189,4 +170,7 @@ if __name__ == "__main__":
     parser.add_argument("-f", "--sig_file", help="file containing significance values for genes/OTUs")
     parser.add_argument("-t", "--type", help="OTU or gene, to filter")
     args = parser.parse_args()
+    
+    kegg_parser = KEGG_Parser()
+    
     main(args.input_file, args.output_prefix, args.quantile, args.list_genes, args.pathway, args.sig_cutoff, args.sig_file, args.type)

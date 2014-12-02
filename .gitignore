@@ -1,0 +1,5 @@
+*.txt
+gg_genomes/*
+databases/*
+*.pyc
+KO_lists/*

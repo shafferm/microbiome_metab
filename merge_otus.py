@@ -9,8 +9,8 @@ from biom.table import Table
 import numpy
 
 def merged_sum(table, otus):
-    table.filter(otus, axis='observation', invert=True)
-    sums = table.sum(axis='sample')
+    table1 = table.filter(otus, axis='observation', inplace=False)
+    sums = table1.sum(axis='sample')
     return sums
 
 def main(table_loc, otu_list, collapsed_name, output_file, classic=False):

@@ -95,6 +95,15 @@ class KEGG_Parser:
             print "reaction id " + rxn + " doesn't exist in this set"
             return None
 
+    def get_ko_name(self, ko):
+        if self.ko_names == None:
+            self.ko_names = get_ko_names()
+        try:
+            return self.ko_names[ko]
+        except KeyError:
+            print "KO id " + ko + " doesn't exist in this set."
+            return set()
+
 def get_reactions():
     """get compounds for each reaction and each KO
     

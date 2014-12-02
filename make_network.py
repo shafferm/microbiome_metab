@@ -1,8 +1,12 @@
 """make_network.py"""
 
 import parse_KEGG as k
+from collections import namedtuple
 
 kegg_parser = k.KEGG_Parser()
+from network import Network, Node
+
+COMMON_COS_LOC = "common_cos.txt"
 
 def parse_group_sig(contribs_loc, otu_cat=False, raw_p=False):
     """
@@ -35,85 +39,66 @@ def parse_group_sig(contribs_loc, otu_cat=False, raw_p=False):
     f.close()
     return sig_dict
 
+def metab_from_rxns(rxns, has_rxns=None, prefix='net'):
+    nodes = dict()
+    for rxn in rxns:
+        reacts, prods, rev = kegg_parser.get_rxn(rxn)
+        nodes[rxn] = Node()
+        nodes[rxn].add_info('type', 'reaction')
+        nodes[rxn].add_info('eng_name', kegg_parser.get_rxn_name(rxn))
+        if has_rxns != None:
+            if rxn in has_rxns:
+                nodes[rxn].add_info('present', True)
+            else:
+                nodes[rxn].add_info('present', False)
+        for react in reacts:
+            if react in nodes:
+                nodes[react].add_target(rxn)
+            else:
+                nodes[react] = Node([rxn])
+            nodes[react].add_info('type', 'compound')
+            nodes[react].add_info('present', False)
+            nodes[react].add_info('eng_name', kegg_parser.get_co_info(react).name)
+        for prod in prods:
+            nodes[rxn].add_target(prod)
+            if prod not in nodes:
+                nodes[prod] = Node()
+            nodes[prod].add_info('type', 'compound')
+            nodes[prod].add_info('present', False)
+            nodes[prod].add_info('eng_name', kegg_parser.get_co_info(prod).name)
+    return Network(prefix, nodes)
+
+def metab_from_rxns_by_pathway(pathway, has_rxns, prefix):
+    rxns = kegg_parser.get_rxns_from_pathway(pathway)
+    return metab_from_rxns(rxns, has_rxns, prefix)
+
 def metab_from_genes(all_genes, genes_to_keep, prefix):
     # node header format: source (tab) target (tab) if reaction (tab) if present (tab) name
-    node_header = ("name", "reaction", "present", "comp_name")
     rxns = set()
     for gene in all_genes:
         rxns = rxns | kegg_parser.get_rxns_from_ko(gene)
     has_rxns = set()
     for gene in genes_to_keep:
         has_rxns = has_rxns | set(kegg_parser.get_rxns_from_ko(gene))
-    
-    edges = set()
-    nodes = set()
-    for rxn in rxns:
-        reacts, prods, rev = kegg_parser.get_rxn(rxn)
-        for react in reacts:
-            edges.add((react, rxn))
-            nodes.add((react, False, False, kegg_parser.get_co_info(react).name))
-        for prod in prods:
-            edges.add((rxn, prod))
-            nodes.add((prod, False, False, kegg_parser.get_co_info(prod).name))
-        if rxn in has_rxns:
-            nodes.add((rxn, True, True, kegg_parser.get_rxn_name(rxn)))
-        else:
-            nodes.add((rxn, False, True, kegg_parser.get_rxn_name(rxn)))
-    print_network(prefix, edges, nodes, node_header=node_header)
+    return metab_from_rxns(rxns, has_rxns, prefix)
 
 def metab_from_genes_by_pathway(pathway, genes, prefix):
-    # node header format: source (tab) target (tab) if reaction (tab) if present (tab) name
-    node_header = ("name", "reaction", "present", "comp_name")
-    rxns = kegg_parser.get_rxns_from_pathway(pathway)
     has_rxns = set()
     for gene in genes:
         gene_rxns = kegg_parser.get_rxns_from_ko(gene)
         has_rxns = has_rxns | gene_rxns
-    edges = set()
-    nodes = set()
-    for rxn in rxns:
-        reacts, prods, rev = kegg_parser.get_rxn(rxn)
-        for react in reacts:
-            edges.add(list(react, rxn))
-            nodes.add(list(react, False, False, kegg_parser.get_co_info(react).name))
-        for prod in prods:
-            edges.add(list(rxn, prod))
-            nodes.add(list(prod, False, False, kegg_parser.get_co_info(prod).name))
-        if rxn in has_rxns:
-            nodes.add(list(rxn, True, True, kegg_parser.get_rxn_name(rxn)))
-        else:
-            nodes.add(list(rxn, False, True, kegg_parser.get_rxn_name(rxn)))
-    print_network(prefix, edges, nodes, node_header=node_header)
+    return metab_from_rxns_by_pathway(pathway, has_rxns, prefix)
 
-def add_sigs_to_network(sig_file, nodes, node_header=None):
-    sig_dict = parse_group_sig(sig_file)
-    for node in nodes:
-        node.append(sig_dict[node[0]])
-    if node_header == None:
-        return nodes
-    else:
-        node_header.append("sig_level")
-        return nodes, node_header
+def add_sigs_to_nodes(sig_file, network, otu_cat=False, raw_p=False):
+    sig_dict = parse_group_sig(sig_file, otu_cat, raw_p)
+    for name, node in network.nodes.iteritems():
+        try:
+            node.add_info('sig', sig_dict[name])
+        except:
+            pass
+    return network
 
-def print_network(prefix, edges, nodes, edge_header=None, node_header=None):
-    # edges
-    f = open(prefix+'_edges.txt', 'w')
-    new_edges= []
-    if edge_header != None:
-        new_edges.apped('\t'.join(edge_header))
-    for edge in edges:
-        edge = map(str, edge)
-        new_edges.append('\t'.join(edge))
-    f.write('\n'.join(new_edges) + '\n')
-    f.close()
-
-    # nodes
-    f = open(prefix+'_nodes.txt', 'w')
-    new_nodes = []
-    if node_header != None:
-        new_nodes.append('\t'.join(node_header))
-    for node in nodes:
-        node = map(str, node)
-        new_nodes.append('\t'.join(node))
-    f.write('\n'.join(new_nodes) + '\n')
-    f.close()
+def remove_common_cos(network):
+    common_cos = open(COMMON_COS_LOC).read().strip().split()
+    network.remove_nodes(common_cos)
+    return network
