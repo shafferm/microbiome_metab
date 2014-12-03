@@ -15,6 +15,8 @@ from network import *
 from parse_KEGG import KEGG_Parser
 from make_gg_genomes import parse_gg
 
+kegg_parser = KEGG_Parser()
+
 def parse_meta_contribs(contribs_loc):
     """
         input: contribs_loc = location of metagenome contributions file
@@ -119,8 +121,8 @@ def make_network(genomes, prefix):
         for gene in genes:
             edge_info[(genome, gene)] = {'type':'has'}
             if gene not in nodes:
-                nodes[gene] = Node(info={'type':'gene', 'eng_name':kegg_parser.get_ko_name})
-    return Network(nodes, edge_info)
+                nodes[gene] = Node(info={'type':'gene', 'eng_name':kegg_parser.get_ko_name(gene)})
+    return Network(prefix, nodes, edge_info)
 
 def main(input_file, output_prefix, quantile, list_genes, pathway, sig_cutoff, sig_file, filt_type):
     genomes = parse_meta_contribs(input_file)
@@ -170,7 +172,5 @@ if __name__ == "__main__":
     parser.add_argument("-f", "--sig_file", help="file containing significance values for genes/OTUs")
     parser.add_argument("-t", "--type", help="OTU or gene, to filter")
     args = parser.parse_args()
-    
-    kegg_parser = KEGG_Parser()
-    
+        
     main(args.input_file, args.output_prefix, args.quantile, args.list_genes, args.pathway, args.sig_cutoff, args.sig_file, args.type)
