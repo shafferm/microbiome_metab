@@ -1,5 +1,7 @@
 """network.py"""
 
+from collections import defaultdict
+
 class Network:
     """class to hold network information include nodes, edge info and name.
     nodes is a dict of node objects
@@ -16,9 +18,15 @@ class Network:
         else:
             self.nodes = nodes
         if edge_info == None:
-            self.edge_info = {}
+            self.edge_info = defaultdict(dict)
         else:
             self.edge_info = edge_info
+    
+    def merge_network(self, network):
+        if network.nodes != None:
+            self.merge_node_dict(network.nodes)
+        if network.edge_info != None:
+            self.add_edge_info_dict(network.edge_info)
             
     def generate_node_header(self):
         header = set()
@@ -39,6 +47,33 @@ class Network:
             for target in node.targets:
                 edges.add((name, target))
         return edges
+
+    def add_node(self, name, node):
+        self.nodes[name] = node
+    
+    def add_node_dict(self, node_dict):
+        for key, value in node_dict.iteritems():
+            self.add_node(key, value)
+
+    def merge_node(self, name, node):
+        if name in self.nodes:
+            self.nodes[name].add_targets(node.targets)
+            for key, value in node.info.iteritems():
+                self.nodes[name].add_info(key, value)
+        else:
+            self.add_node(name, node)
+    
+    def merge_node_dict(self, node_dict):
+        for key, value in node_dict.iteritems():
+            self.merge_node(key, value)    
+
+    def add_edge_info(self, edge, name, info):
+        self.edge_info[edge][name] = info
+
+    def add_edge_info_dict(self, edge_info_dict):
+        for edge, name in edge_info_dict.iteritems():
+            for name, info in edge_info_dict[edge].iteritems():
+                self.add_edge_info(edge, name, info)
     
     def remove_nodes(self, nodes_to_remove):
         for name, node in self.nodes.iteritems():
@@ -50,17 +85,10 @@ class Network:
             except:
                 pass
 
-    def add_node_dict(self, node_dict):
-        for key, value in node_dict.iteritems():
-            self.add_node(key, value)
-    
-    def add_node(self, name, node):
-        self.nodes[name] = node
-    
-    def print_network(self):
+    def print_network(self, loc=""):
         edge_names = set()
         nodes = list()
-        
+
         # nodes
         node_header = list(self.generate_node_header())
         for name, node in self.nodes.iteritems():
@@ -71,7 +99,7 @@ class Network:
                 except KeyError:
                     pass
             nodes.append(name+'\t'+'\t'.join(map(str,attrs)))
-        with open(self.name+"_nodes.txt", 'w') as f:
+        with open(loc+self.name+"_nodes.txt", 'w') as f:
             f.write('id\t'+'\t'.join(node_header)+'\n'+'\n'.join(nodes)+'\n')
 
         # edges
@@ -90,16 +118,17 @@ class Network:
         else:
             edges = ['\t'.join(edge_name) for edge_name in edge_names]
 
-        with open(self.name+"_edges.txt", 'w') as f:
+        with open(loc+self.name+"_edges.txt", 'w') as f:
             f.write('source\ttarget\t'+'\t'.join(edge_header)+'\n'+'\n'.join(edges)+'\n')
+
 
 class Node:
     """class for each node, holds targets and annotation info"""
     def __init__(self, targets=None, info=None):
         if targets == None:
-            self.targets = []
+            self.targets = set()
         else:
-            self.targets = targets
+            self.targets = set(targets)
         if info == None:
             self.info = {}
         else:
@@ -113,11 +142,16 @@ class Node:
             self.add_info(key, value)
 
     def add_target(self, target):
-        self.targets.append(target)
+        self.targets.add(target)
+    
+    def add_targets(self, targets):
+        self.targets = self.targets | targets
 
     def remove_target(self, target):
-        if target in self.targets:
+        try:
             self.targets.remove(target)
+        except KeyError:
+            pass
 
     def get_out_degree(self):
         return len(self.targets)
